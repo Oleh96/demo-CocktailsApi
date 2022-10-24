@@ -1,0 +1,769 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:validation="http://www.mulesoft.org/schema/mule/validation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/validation http://www.mulesoft.org/schema/mule/validation/current/mule-validation.xsd">
+	<validation:config name="Validation_Config" doc:name="Validation Config" doc:id="2de2877d-7b8f-4b5d-8483-4a5d8b6cb05b" />
+	<sub-flow name="searchCocktailsByName" doc:id="c2830321-e34c-43d9-b890-e2cc0733b0d1" >
+		<set-variable value="#[message.attributes.queryParams.cocktailByName]" doc:name="cocktailByName" doc:id="652dd668-0409-438e-898d-a920a867a648" variableName="cocktailByName" />
+		<http:request method="GET" doc:name="GET /cocktailsByName" doc:id="694efcea-d29a-4c76-8d4c-9af03e546411" config-ref="HTTP_Request_drinks_configuration" path="/search.php" >
+			<http:query-params ><![CDATA[#[output application/java
+---
+{
+	"s" : vars.cocktailByName
+}]]]></http:query-params>
+		</http:request>
+		<ee:transform doc:name="data to JSON" doc:id="cf13bb73-32dc-4a22-ac6b-29e21282c0a0" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+fun findKey(key)
+= key match {
+  case is String -> key
+  else -> "null"
+}
+---
+drinks: payload.drinks map ( drink , indexOfDrink ) -> {
+		"idDrink": drink.idDrink,
+		"name": drink.strDrink,
+		"DrinkAlternate": drink.strDrinkAlternate,
+		"Tags": drink.strTags,
+		"Video": drink.strVideo,
+		"Category": drink.strCategory,
+		"IBA": drink.strIBA,
+		"Alcoholic": drink.strAlcoholic,
+		"Glass": drink.strGlass,
+		"Instructions": drink.strInstructions,
+		"Recipe": {
+			(findKey(drink.strIngredient1)): drink.strMeasure1,
+			(findKey(drink.strIngredient2)): drink.strMeasure2,
+			(findKey(drink.strIngredient3)): drink.strMeasure3,	
+			(findKey(drink.strIngredient4)): drink.strMeasure4,
+			(findKey(drink.strIngredient5)): drink.strMeasure5,
+			(findKey(drink.strIngredient6)): drink.strMeasure6,	
+			(findKey(drink.strIngredient7)): drink.strMeasure7
+		},
+		"ImageSource": drink.strImageSource,
+		"ImageAttribution": drink.strImageAttribution,
+		"CreativeCommonsConfirmed": drink.strCreativeCommonsConfirmed
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="endLog" doc:id="36f1ab25-56e0-40fb-8949-6e9fa36c89da" />
+	</sub-flow>
+	<flow name="theBestCocktails" doc:id="39423c53-b0cc-4786-8f4b-eb3a3f6c9e91" >
+		<logger level="INFO" doc:name="startLog" doc:id="e0b4f917-6599-465b-beb9-139ea9894393" />
+		<set-variable value="#[message.attributes.queryParams.first]" doc:name="first" doc:id="642d29ae-fc18-49a4-9bb9-8ca8eaac408c" variableName="first"/>
+		<set-variable value="#[message.attributes.queryParams.second]" doc:name="second" doc:id="6a6a5673-2b00-4f0e-8179-db0d31acf2cc" variableName="second"/>
+		<set-variable value="#[message.attributes.queryParams.third]" doc:name="third" doc:id="7ad63f92-9743-49bd-b33f-4b7c746ac75b" variableName="third"/>
+		<choice doc:name="Choice" doc:id="09469498-1923-4301-8baa-0dcc1c5687e8" >
+			<when expression="#[(not isEmpty(vars.first)) and (not isEmpty(vars.second)) and(isEmpty(vars.third))]">
+				<logger level="INFO" doc:name="logVariable" doc:id="abf4f398-91af-4d1e-a821-ab9dca877d9a" />
+				<scatter-gather doc:name="Scatter-Gather" doc:id="ccd6bb06-19fc-4b80-b69f-35cfac7ad164" >
+					<route >
+						<http:request method="GET" doc:name="GET /coctailByIngredient" doc:id="4183ba3c-55c2-46e8-856e-a5a3942446d6" config-ref="HTTP_Request_drinks_configuration" path="/filter.php">
+					<http:query-params><![CDATA[#[output application/java
+---
+{
+	"i" : vars.first
+}]]]></http:query-params>
+				</http:request>
+					</route>
+					<route >
+						<http:request method="GET" doc:name="GET /coctailByIngredient" doc:id="b44cab1e-c788-4e34-93da-00d5a5a42482" config-ref="HTTP_Request_drinks_configuration" path="/filter.php">
+					<http:query-params><![CDATA[#[output application/java
+---
+{
+	"i" : vars.second
+}]]]></http:query-params>
+				</http:request>
+					</route>
+				</scatter-gather>
+			</when>
+			<when expression="#[(not isEmpty(vars.first)) and (not isEmpty(vars.second)) and(not isEmpty(vars.third))]">
+				<logger level="INFO" doc:name="logVariable" doc:id="902c02c8-fd24-45e3-935a-6277a08dbd31" />
+				<scatter-gather doc:name="Scatter-Gather" doc:id="183aa369-b222-4c9b-b3dd-c0dcc99b51db" >
+					<route >
+						<http:request method="GET" doc:name="GET /coctailByIngredient" doc:id="59a3968f-9b4b-4e68-bc87-b9ec799578e4" config-ref="HTTP_Request_drinks_configuration" path="/filter.php">
+					<http:query-params><![CDATA[#[output application/java
+---
+{
+	"i" : vars.first
+}]]]></http:query-params>
+				</http:request>
+					</route>
+					<route >
+						<http:request method="GET" doc:name="GET /coctailByIngredient" doc:id="34d8f8ce-8263-440f-b4fb-701f9a72db29" config-ref="HTTP_Request_drinks_configuration" path="/filter.php">
+					<http:query-params><![CDATA[#[output application/java
+---
+{
+	"i" : vars.second
+}]]]></http:query-params>
+				</http:request>
+					</route>
+					<route >
+						<http:request method="GET" doc:name="GET /coctailByIngredient" doc:id="5101fc42-3884-4965-936a-5b78a218f112" config-ref="HTTP_Request_drinks_configuration" path="/filter.php">
+							<http:query-params><![CDATA[#[output application/java
+---
+{
+	"i" : vars.third
+}]]]></http:query-params>
+						</http:request>
+					</route>
+				</scatter-gather>
+			</when>
+			<when expression="#[(not isEmpty(vars.first)) and ( isEmpty(vars.second)) and( isEmpty(vars.third))]">
+				<logger level="INFO" doc:name="logVariable" doc:id="ace51d3a-8521-402e-b8d5-0ca2fdc23f1e" />
+				<http:request method="GET" doc:name="GET /coctailByIngredient" doc:id="689d9f4b-f4af-479d-addf-939090f19a7e" config-ref="HTTP_Request_drinks_configuration" path="/filter.php">
+					<http:query-params ><![CDATA[#[output application/java
+---
+{
+	"i" : vars.first
+}]]]></http:query-params>
+				</http:request>
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="logChoiceResult" doc:id="2ca51ee3-9d8a-499a-bcc4-92a017004947" />
+				<http:request method="GET" doc:name="GET /randomCocktail" doc:id="21e37293-9f01-4744-93db-9483a71df034" config-ref="HTTP_Request_drinks_configuration" path="/random.php"/>
+			</otherwise>
+		</choice>
+		<set-variable value="#[payload]" doc:name="sizeOfpayload" doc:id="5c08af28-6322-46a1-9ba5-6eb61e4cd861" variableName="sizeOfpayload"/>
+		<choice doc:name="Choice" doc:id="c9c60dc5-160b-4c06-81a3-b8ef9399b895" >
+			<when expression="#[sizeOf(payload) == 2]">
+				<ee:transform doc:name="twoBestCocktails" doc:id="fa7c155e-0c7f-46de-9d32-5fb53f768d5b" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+var array1 = [payload[0].payload.drinks[3].strDrink ]
+var array2 = [payload[1].payload.drinks[8].strDrink ]
+var arrayOfArrays = [array1, array2]
+---
+flatten(arrayOfArrays)]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<when expression="#[sizeOf(payload) == 3]">
+				<ee:transform doc:name="threeBestCocktails" doc:id="dd509eae-1cc3-4f24-9240-9266fcf71846" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+var array1 = [payload[0].payload.drinks[3].strDrink ]
+var array2 = [payload[1].payload.drinks[8].strDrink ]
+var array3 = [payload[2].payload.drinks[3].strDrink]
+var arrayOfArrays = [array1, array2,array3]
+---
+flatten(arrayOfArrays)
+
+]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<when expression="#[sizeOf(payload) == 1]">
+				<ee:transform doc:name="theBestCocktails" doc:id="6ba35929-f0f0-4aa0-a49c-41ec366bf499">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload.drinks[3].strDrink ++ " - " ++ " It`s deliciousness! Enjoy"  ]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise>
+				<logger level="INFO" doc:name="logResult" doc:id="9a3f687a-cad3-425d-a561-e7c69b56ca2d" />
+			</otherwise>
+		</choice>
+		<ee:transform doc:name="payload" doc:id="1e1033e1-9a74-4b9c-9961-70c2f965a018">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+		<logger level="INFO" doc:name="endLog" doc:id="05dc81eb-9f63-4a39-b7cc-6d339ed96716" />
+	</flow>
+	<flow name="dailyMenu" doc:id="f2512288-07fd-43a9-98c8-dc0838715b2e" >
+		<logger level="INFO" doc:name="startLog" doc:id="04bdedd9-76ad-4fa1-bb1a-094a55a3c499" />
+		<set-variable value="#[message.attributes.queryParams.day]" doc:name="day" doc:id="772e0469-c836-45fe-ba39-6de257dc3a91" variableName="day"/>
+		<validation:is-not-null doc:name="Is not null vars Day" doc:id="8010e1e5-efda-4d84-891b-ed4605f3fd2a" value="#[vars.day]" message="${validation.day}">
+			<error-mapping sourceType="VALIDATION:NULL" targetType="APP:DAYNOTNULL" />
+		</validation:is-not-null>
+		<scatter-gather doc:name="Scatter-Gather" doc:id="e0532a71-bee4-468f-bed3-5a300acfcc8a" >
+			<route >
+				<set-variable value='#["Homemade Liqueur"]' doc:name="homemadeLiqueur" doc:id="6a9c4428-2d50-404d-8cde-08f28226500a" variableName="homemadeLiqueur"/>
+				<set-payload value="#[vars.homemadeLiqueur]" doc:name="varsHomemadeLiqueur" doc:id="ae919e46-7628-469a-af9e-7b1972cae49e" />
+				<http:request method="GET" doc:name="GET /drinkForMenu" doc:id="b1ff4030-f661-4203-96f4-d287cac30a49" config-ref="HTTP_Request_drinks_configuration" path="/filter.php">
+					<http:query-params ><![CDATA[#[output application/java
+---
+{
+	"c" : vars.homemadeLiqueur,
+	"day" : vars.day
+}]]]></http:query-params>
+				</http:request>
+			</route>
+			<route >
+				<set-variable value='#["Punch / Party Drink"]' doc:name="punch/PartyDrink" doc:id="27b85fef-4dce-4c94-a686-850cc6187af6" variableName="punchPartyDrink"/>
+				<set-payload value="#[vars.punchPartyDrink]" doc:name="varsPunchPartyDrink" doc:id="a1e1cdfa-0a54-40b2-97e4-0320883eb1f2" />
+				<http:request method="GET" doc:name="GET /drinkForMenu" doc:id="941983da-cf75-4fa9-92c5-278ae848a6d2" config-ref="HTTP_Request_drinks_configuration" path="/filter.php" >
+					<http:uri-params ><![CDATA[#[output application/java
+---
+{
+	"Key" : "Value"
+}]]]></http:uri-params>
+					<http:query-params ><![CDATA[#[output application/java
+---
+{
+	"c" : vars.punchPartyDrink,
+	"day" : vars.day
+}]]]></http:query-params>
+				</http:request>
+			</route>
+			<route >
+				<set-variable value='#["Shake"]' doc:name="shake" doc:id="fdb19d1c-f132-414d-805f-e5fd09b21ab3" variableName="shake"/>
+				<set-payload value="#[vars.shake]" doc:name="varsShake" doc:id="09e9d8d9-0f9a-4c07-977d-e9af7c463ad8" />
+				<http:request method="GET" doc:name="GET /drinkForMenu" doc:id="dbeae399-b105-4ffa-bcce-2234e19259a6" config-ref="HTTP_Request_drinks_configuration" path="/filter.php" >
+					<http:query-params ><![CDATA[#[output application/java
+---
+{
+	"c" : vars.shake,
+	"day" : vars.day
+}]]]></http:query-params>
+				</http:request>
+			</route>
+			<route >
+				<set-variable value='#["Side"]' doc:name="side" doc:id="6e0bf63e-a526-448b-b356-1723cf18008b" variableName="side"/>
+				<set-payload value="#[vars.side]" doc:name="varsSide" doc:id="c25bb67b-4398-4449-b5a0-6ddb517363c2" />
+				<http:request method="GET" doc:name="GET /starterForMenu" doc:id="6e6a2a29-d041-43fd-b742-53c2d7dc8c97" config-ref="HTTP_Request_food_configuration" path="/filter.php">
+					<http:query-params ><![CDATA[#[output application/java
+---
+{
+	"c" : vars.side
+}]]]></http:query-params>
+				</http:request>
+			</route>
+		</scatter-gather>
+		<logger level="INFO" doc:name="logPayload" doc:id="2b14647e-b222-43ce-a590-648307edc14a" />
+		<validation:is-not-null doc:name="Is not null payload" doc:id="507b508b-20d9-4ffb-9c73-647a4d8ca59b" message="${validation.payloadDailyMenu}" value="#[payload]">
+			<error-mapping sourceType="VALIDATION:NULL" targetType="APP:PAYLOADNOTNULL" />
+		</validation:is-not-null>
+		<choice doc:name="Choice" doc:id="74bf6186-c1d7-4f18-b22a-446be6e42918" >
+			<when expression='#[vars.day == "Monday"]'>
+				<ee:transform doc:name="mondayMenu" doc:id="b8c6d659-a592-440d-80d8-71d44b43e868">
+			<ee:message>
+				<ee:set-payload><![CDATA[ %dw 2.0
+output application/json
+var array1 = [payload[0].payload.drinks[1].strDrink ]
+var array2 = [payload[1].payload.drinks[1].strDrink ]
+var array3 = [payload[2].payload.drinks[1].strDrink ]
+var array4 = [payload[3].payload.meals[1].strMeal]
+var arrayOfArrays = [array1, array2, array3, array4]
+---
+flatten(arrayOfArrays)]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+			</when>
+			<when expression='#[vars.day == "Tuesday"]'>
+				<ee:transform doc:name="tuesdayMenu" doc:id="4ffe7542-7b85-4bee-bbb2-ec27ed71fd7a">
+			<ee:message>
+				<ee:set-payload><![CDATA[ %dw 2.0
+output application/json
+var array1 = [payload[0].payload.drinks[2].strDrink ]
+var array2 = [payload[1].payload.drinks[2].strDrink ]
+var array3 = [payload[2].payload.drinks[2].strDrink ]
+var array4 = [payload[3].payload.meals[2].strMeal]
+var arrayOfArrays = [array1, array2, array3, array4]
+---
+flatten(arrayOfArrays)]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+			</when>
+			<when expression='#[vars.day == "Wednesday"]'>
+				<ee:transform doc:name="wednesdayMenu" doc:id="59404500-a5e1-487d-a227-3ef8690e89e7" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[ %dw 2.0
+output application/json
+var array1 = [payload[0].payload.drinks[3].strDrink ]
+var array2 = [payload[1].payload.drinks[3].strDrink ]
+var array3 = [payload[2].payload.drinks[3].strDrink ]
+var array4 = [payload[3].payload.meals[3].strMeal]
+var arrayOfArrays = [array1, array2, array3, array4]
+---
+flatten(arrayOfArrays)]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<when expression='#[vars.day == "Thursday"]'>
+				<ee:transform doc:name="thursdayMenu" doc:id="84b16ec7-22a5-47e8-9d64-5efb4e8beb8d" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[ %dw 2.0
+output application/json
+var array1 = [payload[0].payload.drinks[4].strDrink ]
+var array2 = [payload[1].payload.drinks[4].strDrink ]
+var array3 = [payload[2].payload.drinks[4].strDrink ]
+var array4 = [payload[3].payload.meals[4].strMeal]
+var arrayOfArrays = [array1, array2, array3, array4]
+---
+flatten(arrayOfArrays)]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<when expression='vars.day == "Friday"'>
+				<ee:transform doc:name="fridayMenu" doc:id="660d04ab-cb73-46db-b5df-cfb055ad5a82" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[ %dw 2.0
+output application/json
+var array1 = [payload[0].payload.drinks[5].strDrink ]
+var array2 = [payload[1].payload.drinks[5].strDrink ]
+var array3 = [payload[2].payload.drinks[5].strDrink ]
+var array4 = [payload[3].payload.meals[5].strMeal]
+var arrayOfArrays = [array1, array2, array3, array4]
+---
+flatten(arrayOfArrays)]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<when expression='#[vars.day == "Weekend"]'>
+				<ee:transform doc:name="weekendMenu" doc:id="54bf0410-9051-421a-895a-5b1976cca2f1">
+					<ee:message>
+						<ee:set-payload><![CDATA[ %dw 2.0
+output application/json
+var array1 = [payload[0].payload.drinks[2].strDrink ]
+var array2 = [payload[1].payload.drinks[3].strDrink ]
+var array3 = [payload[2].payload.drinks[5].strDrink ]
+var array4 = [payload[3].payload.meals[7].strMeal]
+var arrayOfArrays = [array1, array2, array3, array4]
+---
+flatten(arrayOfArrays)]]></ee:set-payload>
+					</ee:message>
+					<ee:variables>
+					</ee:variables>
+				</ee:transform>
+			</when>
+			<otherwise>
+				<logger level="INFO" doc:name="endChoiceLog" doc:id="10a0d6d2-0c5a-4407-9659-eb3f579c0ff3" />
+				<http:request method="GET" doc:name="GET /randomCocktail" doc:id="e2ec98c2-6396-4b4b-86e9-f489820dbeac" config-ref="HTTP_Request_drinks_configuration" path="/random.php"/>
+			</otherwise>
+		</choice>
+		<logger level="INFO" doc:name="endLog" doc:id="e4c27fd6-1311-4e56-bbe7-58aba00f6c88" />
+	</flow>
+	<sub-flow name="fiveCategoryCocktails" doc:id="cec442f1-5a19-4de8-871f-176310e55c99" >
+		<set-variable value="#[message.attributes.queryParams.category]" doc:name="category" doc:id="60383ff1-06b8-4876-ab2a-1dcfbbf8c727" variableName="category" />
+		<validation:is-not-null doc:name="Is not null vars category" doc:id="4a887766-3d00-42a2-920b-e2a5a6a35d7c" value="#[vars.category]" message='${validation.checkQueryCategory}'>
+			<error-mapping sourceType="VALIDATION:NULL" targetType="APP:CATEGORYNULL" />
+		</validation:is-not-null>
+		<http:request method="GET" doc:name="GET /CocktailsbyCategory" doc:id="6f6513f2-6808-46ff-a574-df7c32f3105b" config-ref="HTTP_Request_drinks_configuration" path="/filter.php" >
+			<http:query-params ><![CDATA[#[output application/java
+---
+{
+	"c" : vars.category
+}]]]></http:query-params>
+		</http:request>
+		<choice doc:name="Choice" doc:id="4d62ffb9-8034-46f8-b18f-a2f87746e1a6" >
+			<when expression='#[vars.category == "Cocktail"]'>
+				<logger level="INFO" doc:name="startLog" doc:id="9d09d4a4-bc59-4fd4-8e04-b90dcf1b5a54" />
+				<set-variable value='#["Seafood"]' doc:name="seafood" doc:id="1a53e7b0-7001-4f04-a42f-0669b99f610c" variableName="seafood"/>
+				<set-payload value="#[vars.seafood]" doc:name="varsSeafood" doc:id="c9af2ca7-556d-46d9-b67d-9669ce69873a" />
+				<http:request method="GET" doc:name="GET /Seafood" doc:id="fd345926-9a2b-48e5-a52c-f18f8bbdf9c0" config-ref="HTTP_Request_food_configuration" path="/filter.php">
+					<http:query-params ><![CDATA[#[output application/java
+---
+{
+	"c" : vars.Seafood
+}]]]></http:query-params>
+				</http:request>
+				<ee:transform doc:name="payload" doc:id="c892f22d-a2ab-4e8b-b9c3-76fbdf0422b6" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<when expression='#[vars.category == "Coffee / Tea"]'>
+				<logger level="INFO" doc:name="startLog" doc:id="1a6a93d9-da91-4724-9245-d216483f1e97" />
+				<set-variable value='#["Dessert"]' doc:name="dessert" doc:id="dea74a96-4e1f-455e-803a-cb0d68b2c650" variableName="dessert"/>
+				<set-payload value="#[vars.dessert]" doc:name="varsDessert" doc:id="b88bd807-77f1-4b4a-a1b4-2742d6723f7c" />
+				<http:request method="GET" doc:name="GET /Dessert" doc:id="a76cc83e-10e8-47e3-b3b8-8cd834e43410" config-ref="HTTP_Request_food_configuration" path="/filter.php">
+					<http:query-params ><![CDATA[#[output application/java
+---
+{
+	"c" : vars.dessert
+}]]]></http:query-params>
+				</http:request>
+				<ee:transform doc:name="payload" doc:id="d50399f0-e48c-43f9-bbd1-aa005da81c93">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+					</ee:message>
+					<ee:variables >
+					</ee:variables>
+				</ee:transform>
+			</when>
+			<when expression='#[vars.category == "Shot"]'>
+				<logger level="INFO" doc:name="startLog" doc:id="9d92e11c-4594-4922-8781-f2f6fd2c2026" />
+				<set-variable value='#["Beef"]' doc:name="beef" doc:id="4b317228-ebdc-4c49-b425-c2672b6fb1c4" variableName="beef" />
+				<set-payload value="#[vars.beef]" doc:name="varsBeef" doc:id="9426a517-46cc-4e3d-9253-a9337694f05d" />
+				<http:request method="GET" doc:name="GET /Beef" doc:id="4c8a017f-4629-4b6a-be30-e02b4e0428d1" config-ref="HTTP_Request_food_configuration" path="/filter.php" >
+					<http:query-params ><![CDATA[#[output application/java
+---
+{
+	"c" : vars.beef
+}]]]></http:query-params>
+				</http:request>
+				<ee:transform doc:name="payload" doc:id="b40ca5ed-6b2f-4117-959f-0aa060e78f7e" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+					</ee:message>
+					<ee:variables />
+				</ee:transform>
+			</when>
+			<when expression='#[vars.category == "Beer"]'>
+				<logger level="INFO" doc:name="startLog" doc:id="0a85bed5-73f8-4c94-966a-cd0815ba306a" />
+				<set-variable value='#["Starter"]' doc:name="starter" doc:id="d978a157-8d74-4c14-b87d-8dba32336518" variableName="starter" />
+				<set-payload value="#[vars.starter]" doc:name="varsStarter" doc:id="ad78d831-ae6e-4bef-8999-67431cba7023" />
+				<http:request method="GET" doc:name="GET /Starter" doc:id="0c4e1641-8434-4d3f-9518-f3f7e58ba375" config-ref="HTTP_Request_food_configuration" path="/filter.php" >
+					<http:query-params ><![CDATA[#[output application/java
+---
+{
+	"c" : vars.starter
+}]]]></http:query-params>
+				</http:request>
+				<ee:transform doc:name="payload" doc:id="3bfaf664-6da9-4d5d-a8c3-4b40ac759e17" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+					</ee:message>
+					<ee:variables />
+				</ee:transform>
+			</when>
+			<when expression='#[vars.category == "Ordinary Drink"]'>
+				<logger level="INFO" doc:name="startLog" doc:id="a1ae09d7-da8c-4d11-92c6-22ad1d2a2e8d" />
+				<set-variable value='#["Vegetarian"]' doc:name="vegetarian" doc:id="ac8fcbfd-ecad-4caf-a348-9943f7c402b2" variableName="vegetarian" />
+				<set-payload value="#[vars.vegetarian]" doc:name="varsVegetarian" doc:id="38d740ba-4535-4db6-b5a0-e06bbdd3417a" />
+				<http:request method="GET" doc:name="GET /Vegetarian" doc:id="197d999c-07c6-4100-a384-28dae706d25a" config-ref="HTTP_Request_food_configuration" path="/filter.php" >
+					<http:query-params ><![CDATA[#[output application/java
+---
+{
+	"c" : vars.vegetarian
+}]]]></http:query-params>
+				</http:request>
+				<ee:transform doc:name="payload" doc:id="8c257716-e0e9-4a3b-bc60-27b62e0a70d7" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+					</ee:message>
+					<ee:variables />
+				</ee:transform>
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="startLog" doc:id="61d13f17-b2ce-4fce-a5da-96e1d83e9084" />
+				<validation:is-true doc:name="Is true" doc:id="07b02c9d-1300-4a1b-81e4-9c3fc12fcaa8" expression='#[["Other/Unknown", "Cocoa", "Shake", "Homemade Liqueur", "Punch / Party Drink", "Soft Drink"]contains vars.category]' message='#["Good choice. Enjoy your cocktail"]'/>
+				<http:request method="GET" doc:name="GET /cocktailsByCategory" doc:id="6e132187-4854-42eb-b9ad-d2aa77af1b6d" config-ref="HTTP_Request_drinks_configuration" path="/filter.php">
+					<http:query-params ><![CDATA[#[output application/java
+---
+{
+	"c" : vars.category
+}]]]></http:query-params>
+				</http:request>
+			</otherwise>
+		</choice>
+		<logger level="INFO" doc:name="endLog" doc:id="e281e884-4734-4de0-9c50-e7b5946de378" />
+	</sub-flow>
+	<sub-flow name="listOfAllCocktails" doc:id="3358c945-8e55-4cdd-92f4-98b2455ffc50" >
+		<logger level="INFO" doc:name="startLog" doc:id="149d8c52-041c-4e7a-9161-3967a7381d97" />
+		<set-variable value='#[["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"]]' doc:name="alfabet(A-Z)" doc:id="fa5dd378-7ad8-4847-ba37-081052ab3e81" variableName="AZ" />
+		<set-variable value="#[[]]" doc:name="varsLetter" doc:id="b1d86ff2-ad30-45bc-ad7c-39e9ffa40849" variableName="varsLetter" />
+		<foreach doc:name="For Each Alfabet" doc:id="723db3d2-88e2-48c8-8890-26f17c5cb9da" collection="#[vars.AZ]" >
+			<logger level="INFO" doc:name="Logger" doc:id="6ebefe59-cc97-4970-bb99-e30209724507" />
+			<http:request method="GET" doc:name="GET /listCocktails" doc:id="138e3809-7323-4145-aaf1-79c2546f93bc" config-ref="HTTP_Request_drinks_configuration" path="/search.php" >
+				<http:query-params ><![CDATA[#[output application/java
+---
+{
+	"f" : payload
+}]]]></http:query-params>
+			</http:request>
+			<ee:transform doc:name="payload" doc:id="ccde7bf5-5c83-41f2-b7cc-249f1924b1e7" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0 
+output application/json 
+--- 
+payload]]></ee:set-payload>
+				</ee:message>
+				<ee:variables >
+					<ee:set-variable variableName="varsLetter" ><![CDATA[%dw 2.0
+output application/java
+---
+vars.varsLetter + payload]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+		</foreach>
+		<ee:transform doc:name="varsletter" doc:id="48c7218d-1173-4a45-a5e8-517648b6be54" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+vars.varsLetter]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<ee:transform doc:name="collectInOneList" doc:id="1420ceae-19a2-4ac3-8d82-1a2f6a9eed2e" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+flatten(payload.drinks)]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="endLog" doc:id="7fc8a14e-4898-4819-ac55-1b2493877c03" />
+	</sub-flow>
+	<sub-flow name="listOfCategory" doc:id="fd6785fc-7e79-4b87-91fd-7cd638f54af9" >
+		<set-variable value="#[message.attributes.queryParams.list]" doc:name="list" doc:id="b092bf84-dadc-4cf4-b641-5fcb11610026" variableName="list"/>
+		<http:request method="GET" doc:name="GET /listOfCategory" doc:id="36fbe9ff-d967-40c3-9aa3-1a72068dfcc6" config-ref="HTTP_Request_drinks_configuration" path="/list.php">
+			<http:query-params ><![CDATA[#[output application/java
+---
+{
+	"c" : vars.list
+}]]]></http:query-params>
+		</http:request>
+		<ee:transform doc:name="listOfAllCategory" doc:id="844d9bb5-cfeb-4485-bfaf-c09cf2eaeea7">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+flatten(payload.drinks.strCategory)]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="endLog" doc:id="bcf1d031-ff21-4d08-89b0-bc2be9009c4a" />
+	</sub-flow>
+	<sub-flow name="listOfIngredient" doc:id="fa2a897d-f4ea-4992-8984-6b5881f0699b" >
+		<set-variable value="#[message.attributes.queryParams.listIngred]" doc:name="listIngred" doc:id="c60b979f-1e80-4659-a259-974f035b858a" variableName="listIngred"/>
+		<http:request method="GET" doc:name="GET /listOfIngredient" doc:id="5454b983-61a7-4f5f-aba0-c21993a9c977" config-ref="HTTP_Request_drinks_configuration" path="/list.php">
+			<http:query-params ><![CDATA[#[output application/java
+---
+{
+	"i" : vars.listIngred
+}]]]></http:query-params>
+		</http:request>
+		<ee:transform doc:name="listOfAllIngredient" doc:id="d966eae7-3cf0-4765-986a-9f0c11f85454">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+flatten(payload.drinks.strIngredient1)]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="endLog" doc:id="53fe1a6d-a3f5-4bca-a3a3-e91cc9cfcf5d" />
+	</sub-flow>
+	<sub-flow name="searchByIngredient" doc:id="f977bff7-aad3-41e1-b05f-71f6c83d4afa" >
+		<set-variable value="#[message.attributes.queryParams.ingredient]" doc:name="ingredient" doc:id="a67c72f7-1fd9-4f2b-af5d-a96f3f8dbe65" variableName="ingredient" />
+		<validation:is-not-null doc:name="Is not null vars ingridient" doc:id="9ff4eb43-4b79-47ab-9dde-f75bc14193fa" value="#[vars.ingredient]" message='${validation.checkQueryIngredient}' config-ref="Validation_Config">
+			<error-mapping sourceType="VALIDATION:NULL" targetType="APP:INGREDIENTNOTNULL" />
+		</validation:is-not-null>
+		<http:request method="GET" doc:name="GET /ingredient" doc:id="d66b00fb-0d6b-4ace-a019-77e15996cffb" config-ref="HTTP_Request_drinks_configuration" path="/filter.php" >
+			<http:query-params ><![CDATA[#[output application/java
+---
+{
+	"i" : vars.ingredient
+}]]]></http:query-params>
+		</http:request>
+		<logger level="INFO" doc:name="endLog" doc:id="a567b414-e86f-435e-8c52-898b4443fdd2" />
+	</sub-flow>
+	<sub-flow name="recipe" doc:id="8cd57959-01f7-467c-8ba5-45340c5741c5" >
+		<set-variable value="#[message.attributes.queryParams.cocktailName]" doc:name="cocktailName" doc:id="ace01006-e15a-4f30-a155-ddfcca4b526e" variableName="cocktailName"/>
+		<validation:is-not-null doc:name="Is not null vars cocktailName" doc:id="7d1f3d9e-2f5e-445c-8688-f12d51c362df" value="#[vars.cocktailName]" message='${validation.checkRecipe}' config-ref="Validation_Config">
+			<error-mapping sourceType="VALIDATION:NULL" targetType="APP:COCTAILNAMENOTNULL" />
+		</validation:is-not-null>
+		<http:request method="GET" doc:name="GET /recipeCocktail" doc:id="a0a52786-70fb-41f8-8d6f-d8a9dbc83e1c" config-ref="HTTP_Request_drinks_configuration" path="/search.php">
+			<http:query-params ><![CDATA[#[output application/java
+---
+{
+	"s" : vars.cocktailName
+}]]]></http:query-params>
+		</http:request>
+		<logger level="INFO" doc:name="logPayload" doc:id="150dbe69-2ae8-4be3-8cb6-ab3fd115e7ff" />
+		<ee:transform doc:name="payload" doc:id="465ec4d1-9d31-4f13-bd5f-e7e90930c5aa" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<ee:transform doc:name="recipeProportions" doc:id="beb37281-1d6e-4f61-acc5-4632539d0bf3" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+fun findKey(key)
+= key match {
+  case is String -> key
+  else -> "null"
+}
+---
+drinks: payload.drinks map ( drink , indexOfDrink ) -> {
+		"name": drink.strDrink,
+		"Recipe": {
+			(findKey(drink.strIngredient1)): drink.strMeasure1,
+			(findKey(drink.strIngredient2)): drink.strMeasure2,
+			(findKey(drink.strIngredient3)): drink.strMeasure3,	
+			(findKey(drink.strIngredient4)): drink.strMeasure4,
+			(findKey(drink.strIngredient5)): drink.strMeasure5,
+			(findKey(drink.strIngredient6)): drink.strMeasure6,	
+			(findKey(drink.strIngredient7)): drink.strMeasure7
+		}
+		
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="endLog" doc:id="5f1284bd-f71e-4895-b7e2-0132530f3b38" />
+	</sub-flow>
+	<flow name="randomDrinkArray" doc:id="6aa6b3b5-3192-433b-ba65-e0739c037a88" >
+		<logger level="INFO" doc:name="startLog" doc:id="db22aa45-4eb1-4075-8292-4fc64fde4562" />
+		<set-variable value="" doc:name="emptyPayload" doc:id="b659588f-fe5d-455b-951e-5a3523d017d8" variableName="emptyPayload" />
+		<choice doc:name="Choice" doc:id="d6e02aab-7ab8-46a1-a09c-a99047de9201" >
+			<when expression="#[isEmpty (payload)]" >
+				<set-variable value="#[[]]" doc:name="array" doc:id="610ca961-6362-4e44-ad3a-7302116a6aba" variableName="array" />
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="logResult" doc:id="d23855bf-33fc-4edd-848b-1fcebf1ff89f" />
+			</otherwise>
+		</choice>
+		<http:request method="GET" doc:name="GET /randomCocktail" doc:id="a37eef20-4c56-4677-b6dc-f625b66c0fed" config-ref="HTTP_Request_drinks_configuration" path="/random.php" />
+		<ee:transform doc:name="data to JSON" doc:id="cbde99db-b3f7-4147-a123-a4770826e6ed" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+fun findKey(key)
+= key match {
+  case is String -> key
+  else -> "null"
+}
+---
+drinks: payload.drinks map ( drink , indexOfDrink ) -> {
+		"idDrink": drink.idDrink,
+		"name": drink.strDrink,
+		"DrinkAlternate": drink.strDrinkAlternate,
+		"Tags": drink.strTags,
+		"Video": drink.strVideo,
+		"Category": drink.strCategory,
+		"IBA": drink.strIBA,
+		"Alcoholic": drink.strAlcoholic,
+		"Glass": drink.strGlass,
+		"Instructions": drink.strInstructions,
+		"Recipe": {
+			(findKey(drink.strIngredient1)): drink.strMeasure1,
+			(findKey(drink.strIngredient2)): drink.strMeasure2,
+			(findKey(drink.strIngredient3)): drink.strMeasure3,	
+			(findKey(drink.strIngredient4)): drink.strMeasure4,
+			(findKey(drink.strIngredient5)): drink.strMeasure5,
+			(findKey(drink.strIngredient6)): drink.strMeasure6,	
+			(findKey(drink.strIngredient7)): drink.strMeasure7
+		},
+		"ImageSource": drink.strImageSource,
+		"ImageAttribution": drink.strImageAttribution,
+		"CreativeCommonsConfirmed": drink.strCreativeCommonsConfirmed
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<ee:transform doc:name="payload + varsArray" doc:id="35d1557d-4f9b-4fb7-872d-b122fcf9465a" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="array" ><![CDATA[%dw 2.0
+output application/java
+---
+vars.array + payload]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<ee:transform doc:name="varsArray" doc:id="2c893fbc-caec-4958-ae74-c33b1d708f09" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+vars.array]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="logVars" doc:id="dab582b0-df6f-4231-9403-8eb96c876d3b" />
+		<choice doc:name="Choice" doc:id="4a0c83bf-0ca6-44a3-a946-4f4912774bd8" >
+			<when expression="#[sizeOf(payload) &lt; 3]" >
+				<logger level="INFO" doc:name="startLogChoice" doc:id="4d8e39aa-3c56-44a7-89a3-e0b0c43f6932" />
+				<validation:is-true doc:name="If size of payload less then three" doc:id="a1586f8f-2baf-46e0-8785-fd1e2b7018c7" expression="#[sizeOf(payload) &lt; 3]" message="${validation.ifTrueSizeOfVars}" config-ref="Validation_Config">
+					<error-mapping sourceType="STREAM_MAXIMUM_SIZE_EXCEEDED" targetType="APP:PAYLOADSIZE" />
+				</validation:is-true>
+				<flow-ref doc:name="randomDrinkArray" doc:id="dc869166-3af7-46a8-bffc-cc4b411315da" name="randomDrinkArray" />
+			</when>
+			<when expression="#[sizeOf(payload) == 3]" >
+				<logger level="INFO" doc:name="logPayload" doc:id="5ab149f9-a404-4f84-9cf2-b24102f32e26" />
+				<choice doc:name="Choice" doc:id="a739aad5-772e-41bd-b94f-4783f08687be" >
+					<when expression="#[payload.drinks[0].Category == payload.drinks[1].Category]" >
+						<logger level="INFO" doc:name="startLogChoice" doc:id="22f3a437-b116-4924-aed4-c36aab3ba76f" />
+						<ee:transform doc:name="emptyPayload" doc:id="4be042aa-3248-4c36-8de9-72db5f601bcf" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+vars.emptyPayload]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+						<flow-ref doc:name="randomDrinkArray" doc:id="2e832aee-97dd-4a03-b293-62c6c80421b3" name="randomDrinkArray" />
+					</when>
+					<when expression="#[payload.drinks[0].Category == payload.drinks[2].Category]" >
+						<logger level="INFO" doc:name="startLogChoice" doc:id="b9379c11-c740-4a24-99ca-01a94e249bf7" />
+						<ee:transform doc:name="emptyPayload" doc:id="1e11d70a-ed03-4502-ae09-fc005e5db6d7" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+vars.emptyPayload]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+						<flow-ref doc:name="randomDrinkArray" doc:id="a4f293ff-e948-40da-97a6-5b68bdbec776" name="randomDrinkArray" />
+					</when>
+					<when expression="#[payload.drinks[1].Category == payload.drinks[2].Category]" >
+						<logger level="INFO" doc:name="startLogChoice" doc:id="aa354613-97f8-4534-916e-c703a93006e3" />
+						<ee:transform doc:name="emptyPayload" doc:id="f60bb604-8cdc-47c8-98a2-f77737fd4250" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+vars.emptyPayload]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+						<flow-ref doc:name="randomDrinkArray" doc:id="4ae3a08a-facb-434d-94d0-a72e262223a9" name="randomDrinkArray" />
+					</when>
+					<otherwise >
+						<logger level="INFO" doc:name="logPayload" doc:id="009387ec-76c2-43ec-9874-9602ef1d93d9" />
+						<ee:transform doc:name="payload" doc:id="c63fc95e-2a8a-43da-8704-397c5f60368e" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload	]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+					</otherwise>
+				</choice>
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="endLog" doc:id="4395c00d-faa8-483f-99c2-084eeb760f9b" />
+			</otherwise>
+		</choice>
+		<logger level="INFO" doc:name="endLog" doc:id="85de30b5-5e5a-47c3-b458-9ef2e08c4702" />
+	</flow>
+
+
+</mule>

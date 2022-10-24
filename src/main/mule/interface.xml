@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd ">
+    <apikit:config name="cocktails-api-config" api="cocktails-api.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <flow name="cocktails-api-main">
+        <http:listener config-ref="HTTP_Listener_config" path="/api/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:router config-ref="cocktails-api-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:BAD_REQUEST">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Bad request"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">400</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:METHOD_NOT_ALLOWED">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Method not allowed"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">405</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_ACCEPTABLE">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not acceptable"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">406</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:UNSUPPORTED_MEDIA_TYPE">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Unsupported media type"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">415</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_IMPLEMENTED">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not Implemented"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">501</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="cocktails-api-console">
+        <http:listener config-ref="HTTP_Listener_config" path="/console/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:console config-ref="cocktails-api-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="get:\cocktailsName:cocktails-api-config">
+		<flow-ref doc:name="searchCocktailsByName" doc:id="dc36e9e7-3998-4a70-9b40-25ac10951bd9" name="searchCocktailsByName" />
+    </flow>
+    <flow name="get:\dailyMenu:cocktails-api-config">
+		<flow-ref doc:name="dailyMenu" doc:id="e4f01a0d-e85a-49d1-a3ea-f72c1e1eb0dc" name="dailyMenu" />
+		<error-handler ref="VALIDATION_DAYLIMENU" />
+    </flow>
+    <flow name="get:\fiveCategory:cocktails-api-config">
+		<flow-ref doc:name="fiveCategoryCocktails" doc:id="e0bdfa1c-3e86-42c0-9e7d-f9bed9b28c54" name="fiveCategoryCocktails" />
+		<error-handler ref="VALIDATION_FIVE_CATEGORY" />
+    </flow>
+    <flow name="get:\listOfCategory:cocktails-api-config">
+		<flow-ref doc:name="listOfCategoryCoctails" doc:id="cd6bc3b8-2396-4da1-8fcc-4441a0055152" name="listOfCategory" />
+    </flow>
+    <flow name="get:\listOfCocktails:cocktails-api-config">
+		<flow-ref doc:name="listOfAllCocktails" doc:id="a59de138-037e-43ed-8d78-4544df187864" name="listOfAllCocktails" />
+    </flow>
+    <flow name="get:\listOfIngredient:cocktails-api-config">
+		<flow-ref doc:name="listOfCocktails" doc:id="78a450fd-2eed-4e6d-b23a-f8722128e679" name="listOfIngredient" />
+    </flow>
+    <flow name="get:\randomThree:cocktails-api-config">
+		<flow-ref doc:name="randomDrinkArrayCocktails" doc:id="305d5449-d428-4848-99d3-16f8eee52c29" name="randomDrinkArray" />
+		<error-handler ref="VALIDATION_RANDOM_FLOW_ARRAY" />
+    </flow>
+    <flow name="get:\recipe:cocktails-api-config">
+		<flow-ref doc:name="recipeCocktails" doc:id="3545c761-c06e-4e4c-b5ca-4ef09bff6103" name="recipe" />
+		<error-handler ref="VALIDATION_RECIPE" />
+    </flow>
+    <flow name="get:\searchByIngred:cocktails-api-config">
+		<flow-ref doc:name="searchByIngredient" doc:id="909741e9-2e23-4a9c-8393-9abf6a5cf5a0" name="searchByIngredient" />
+		<error-handler ref="VALIDATION_SEARCH_INGRIDIENT" />
+    </flow>
+    <flow name="get:\theBestCoctail:cocktails-api-config">
+		<flow-ref doc:name="theBestCocktail" doc:id="b480b336-ccaf-4b15-b378-065fb49ae9d8" name="theBestCocktails" />
+    </flow>
+</mule>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:secure-properties="http://www.mulesoft.org/schema/mule/secure-properties" xmlns:telegram="http://www.mulesoft.org/schema/mule/telegram"
+	xmlns:slack="http://www.mulesoft.org/schema/mule/slack"
+	xmlns:tls="http://www.mulesoft.org/schema/mule/tls" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd
+http://www.mulesoft.org/schema/mule/slack http://www.mulesoft.org/schema/mule/slack/current/mule-slack.xsd
+http://www.mulesoft.org/schema/mule/telegram http://www.mulesoft.org/schema/mule/telegram/current/mule-telegram.xsd
+http://www.mulesoft.org/schema/mule/secure-properties http://www.mulesoft.org/schema/mule/secure-properties/current/mule-secure-properties.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="0df529dc-d192-441b-9878-854b5d4ae142" >
+		<http:listener-connection host="0.0.0.0" port="${http.port}" />
+	</http:listener-config>
+	<configuration-properties doc:name="Configuration properties" doc:id="2b273d7e-ae9f-4ffa-82fd-b0a77c0dbab8" file="config.yaml" />
+	<http:request-config name="HTTP_Request_food_configuration" doc:name="HTTP Request configuration" doc:id="84d5d60b-aed1-4c3a-a1dd-3749a08bcb93" basePath="${foodapi.basepath}" >
+		<http:request-connection host="${foodapi.host}" />
+	</http:request-config>
+	<http:request-config name="HTTP_Request_drinks_configuration" doc:name="HTTP Request configuration" doc:id="9ac3280e-aedf-4ed9-9b29-6b18be019556" basePath="${drinksapi.basepath}" >
+		<http:request-connection host="${drinksapi.host}" />
+	</http:request-config>
+</mule>

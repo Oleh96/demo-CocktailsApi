@@ -1,0 +1,19 @@
+http:
+  port: "8081"
+
+drinksapi:
+  host: "www.thecocktaildb.com"
+  basepath: "/api/json/v1/1"
+foodapi:
+  host: "www.themealdb.com"
+  basepath: "/api/json/v1/1"
+
+  
+validation:
+    checkRecipe: " Hi , you forgot write cocktail name"
+    checkQueryIngredient: "Please write some ingredient"
+    ifTrueSizeOfVars: " Wait a little beat, we check if size valid "
+    checkQueryCategory: "Please write some cocktail category"
+    day: "Please write the day you are interested in"  
+    payloadDailyMenu: "Sorry, something went wrong, try again please"   
+   
